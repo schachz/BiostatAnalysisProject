@@ -1,0 +1,94 @@
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(nlme)
+library(lme4)
+library(redres)
+library(rstudioapi)
+
+q2data <- read_csv("Study1007data.csv")
+q2data
+
+# We need to figure out if there is a link between weight gain as the child ages and the sex of the child.
+
+ggplot(q2data, aes(
+  x = age,
+  y = wt,
+  group = sex,
+  color = factor(sex)
+)) +
+  geom_point() +
+  xlab("Age") +
+  ylab("Weight") +
+  geom_smooth(method = lm, se = FALSE)
+
+# The primary goal in this study is to determine what factors influence the weight of children
+# in this country. Fit a fixed effects model with weight as the response and age, sex, motherâs age, literacy,
+# and other child deaths as predictors. Which terms are significant in this model?
+
+m1_lm <-
+  lm(wt ~ age + factor(sex) + mage + factor(lit) + died, data = q2data)
+summary(m1_lm)
+
+
+# Also, fit a mixed effects model with weight as the response.
+# Include an interaction term between age and sex, and main effects for mage, lit, and died.
+# Use a random intercept term for the child.
+m2_nlme <-
+  lme(wt ~  mage + factor(lit) + died + age * factor(sex),
+      random = ~ 1 | id,
+      data = q2data)
+summary(m2_nlme)
+anova(m2_nlme)
+
+m2_lme4 <- lmer(wt ~  mage + factor(lit) + died + age * factor(sex) + (1 | id), data = q2data)
+
+
+# What is the predicted difference in child weight between a 15- and 25-year-old mother?
+coefMage <- summary(m2_nlme)$coefficient$fixed[["mage"]]
+diff <- 25 * coefMage - 15 * coefMage
+diff
+
+# What is the expected difference in weights for identical twins (i.e., same fixed
+# effects) according to the model? You may need to use a function/simulation/for-loop
+
+nsim = 100
+predList = list()
+diffList = list()
+newData = q2data[1:8, ]
+
+for (i in 1:nsim) {
+  newData$sex = round(runif(1, 1, 2), 0)
+  newData$age = round(rnorm(1, 30, 5), 0)
+  we <- round(sort(rnorm(4, mean(q2data$wt), sd(q2data$wt))), 2)
+  newData$wt = c(rep(we, 2))
+  pred <- predict(m2_lme4, newdata = newData)
+  diff <- pred[[8]] - pred[[1]]
+  predList[[i]] = unname(pred)
+  diffList[[i]] = unname(diff)
+}
+
+
+preds <- do.call(cbind, predList)
+diffs <- do.call(rbind, diffList)
+
+# For this data, does it make more sense to use a fixed effects model (part b) or a mixed
+# effects model (part c)? Why?
+anova(update(m2_nlme, . ~ ., method = "ML"), m1_lm)
+
+# Residuals vs. Fitted plot
+plot_redres(m2_lme4, type = "std_cond")
+
+# ii. QQ plot of the residuals
+plot_resqq(m2_lme4)
+
+# iii. QQ plot of the random effects
+plot_ranef(m2_lme4)
+
+# Fit a model with age and motherâs age as the only fixed effects and compare it to the previous model.
+# Is the smaller model acceptable to use instead?
+m3_nlme <- lme(wt ~  age + mage, random = ~ 1 | id, data = q2data)
+summary(m3_nlme)
+
+anova(update(m2_nlme, . ~ ., method = "ML"),
+      update(m3_nlme, . ~ ., method = "ML"))
