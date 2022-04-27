@@ -3,10 +3,9 @@ library(dplyr)
 library(ggplot2)
 library(nlme)
 library(lme4)
-library(redres)
 library(rstudioapi)
 
-q2data <- read_csv("Study1007data.csv")
+q2data <- read.csv("C:/Users/schac/Downloads/phweight.csv")
 q2data
 
 # We need to figure out if there is a link between weight gain as the child ages and the sex of the child.
