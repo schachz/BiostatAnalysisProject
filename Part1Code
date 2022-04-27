@@ -9,8 +9,11 @@ library(rstudioapi)
 q1data <- read_csv("C:/Users/schac/Downloads/healthcare.csv")
 q1data
 
-q1data <- q1data %>% mutate(log_income = log(income))
+#Adding log(income) to our dataset using cbind
+log_income <- c(log(q1data$income))
+q1data <- cbind(q1data,log_income)
 
+#Plotting 3 histograms from the data using tee pipe function
 q1data %T>%
   with(hist(Y)) %T>%
   with(hist(income)) %T>%
@@ -21,8 +24,8 @@ q1data %T>%
 m1 <- glm(Y ~ log_income, family = poisson(link = "log"), data = q1data)
 summary(m1)
 
-sim_fmp <- simulateResiduals(m1, refit=TRUE) 
-testDispersion(sim_fmp, plot = FALSE)
+sim_res <- simulateResiduals(m1, refit=TRUE) 
+testDispersion(sim_res, plot = FALSE)
 
 
 b <- summary(m1)$coefficients[2,1]
@@ -38,8 +41,8 @@ res = cbind.data.frame(B0 = 0.5, B=b, S.E.=se, "z value" = z,  "p value" = p)
 m2 <- glm(Y ~ log_income, family = Gamma(link = "log"), data = q1data)
 summary(m2)
 
-sim_fmp <- simulateResiduals(m2, refit=TRUE) 
-testDispersion(sim_fmp, plot = FALSE)
+sim_res <- simulateResiduals(m2, refit=TRUE) 
+testDispersion(sim_res, plot = FALSE)
 
 
 b <- summary(m2)$coefficients[2,1]
@@ -56,8 +59,8 @@ res = cbind.data.frame(B0 = 0.5, B=b, S.E.=se, "z value" = z,  "p value" = p)
 m3 <- glm(Y ~ log_income, family = inverse.gaussian(link = "log"), data = q1data)
 summary(m3)
 
-sim_fmp <- simulateResiduals(m3, refit=TRUE) 
-testDispersion(sim_fmp, plot = FALSE)
+sim_res <- simulateResiduals(m3, refit=TRUE) 
+testDispersion(sim_res, plot = FALSE)
 
 plot(m3, which=c(1,3))
 
@@ -85,7 +88,7 @@ highleverage(m3)
 
 
 cooksd <- cooks.distance(m3)
-n = nrow(healthcaredata)
+n = nrow(q1data)
 
 cutoffCook <- 4/n
 plot(m3, which=4, cook.levels=cutoffCook)
